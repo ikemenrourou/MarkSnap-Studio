@@ -99,7 +99,7 @@ export default function App() {
   const [logicalWidth, setLogicalWidth] = useState<number>(380);
   const [fontSize, setFontSize] = useState<number>(18);
   const [lineHeight, setLineHeight] = useState<number>(1.75);
-  const [cardPadding, setCardPadding] = useState<number>(24);
+  const [cardPadding, setCardPadding] = useState<number>(16);
   const [outerFramePadding, setOuterFramePadding] = useState<number>(0);
   const [borderRadius, setBorderRadius] = useState<number>(16);
   const [fontFamily, setFontFamily] = useState<'sans' | 'serif' | 'mono'>(
