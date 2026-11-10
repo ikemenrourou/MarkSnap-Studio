@@ -2,12 +2,17 @@
 
 **Convert Markdown, AI responses, tables, LaTeX math, and Mermaid diagrams into mobile-friendly, high-DPI long images and multi-card carousels.**
 
+### 🚀 Live Demo: <https://marksnap-studio.pages.dev>
+
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-marksnap--studio.pages.dev-F38020?logo=cloudflare&logoColor=white)](https://marksnap-studio.pages.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](https://react.dev/)
 [![Vite](https://img.shields.io/badge/Vite-8.x-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
-[![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-emerald.svg)](https://opensource.org/licenses/Apache-2.0)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-emerald.svg)](./LICENSE)
 
 MarkSnap Studio is a 100% client-side web tool designed to turn raw Markdown or rich web content into crisp, mobile-adapted images that are comfortable to read on phones (WeChat, WhatsApp, Telegram, iMessage, X/Twitter) or desktop screens without pinching and zooming.
+
+> **Try it now — no install, no sign-up:** <https://marksnap-studio.pages.dev>
 
 ---
 
@@ -51,8 +56,8 @@ MarkSnap Studio is a 100% client-side web tool designed to turn raw Markdown or 
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/your-username/marksnap-studio.git
-cd marksnap-studio
+git clone https://github.com/ikemenrourou/MarkSnap-Studio.git
+cd MarkSnap-Studio
 
 # 2. Install dependencies
 npm install
@@ -78,12 +83,42 @@ npm run build
 
 ## 📦 Static Deployment
 
-MarkSnap Studio compiles into a pure static bundle (`dist/`) and can be deployed to any static hosting provider:
+MarkSnap Studio compiles into a pure static bundle (`dist/`) and can be deployed to any static hosting provider.
 
-- **Cloudflare Pages / Vercel / Netlify**
-  - **Build command**: `npm run build`
-  - **Build output directory**: `dist`
-  - **Node.js version**: `18` or `20`
+### ☁️ Cloudflare Pages (live)
+
+- **Production URL**: <https://marksnap-studio.pages.dev>
+- **Project name**: `marksnap-studio`
+- **Build command**: `npm run build`
+- **Build output directory**: `dist`
+- **Node.js version**: `20` (see `engines` in `package.json`)
+- **Environment variables**: none required (fully client-side)
+
+#### Option A — Git integration (recommended, auto-deploy on push)
+
+1. Cloudflare Dashboard → **Workers & Pages** → **Create** → **Pages** → **Connect to Git**.
+2. Select `ikemenrourou/MarkSnap-Studio`, framework preset **Vite**.
+3. Build command `npm run build`, output directory `dist`.
+4. Every push to `main` produces a production deployment; other branches get preview URLs.
+
+#### Option B — Direct upload with Wrangler CLI
+
+```bash
+npm install
+npm run build
+
+# first time only: create the Pages project
+npx wrangler pages project create marksnap-studio --production-branch main
+
+# deploy the built assets
+npx wrangler pages deploy dist --project-name marksnap-studio --branch main
+```
+
+The repo ships a `wrangler.toml` with `pages_build_output_dir = "./dist"`, so `npx wrangler pages deploy` also works without extra flags.
+
+### 🔁 Other hosts
+
+- **Vercel / Netlify**: build command `npm run build`, output directory `dist`.
 
 ---
 
@@ -97,7 +132,6 @@ MarkSnap Studio compiles into a pure static bundle (`dist/`) and can be deployed
 │   ├── utils/
 │   │   ├── markdownProcessor.ts     # AI cleanse, pagination splitter & export metrics
 │   │   ├── markdownRenderer.ts      # GFM, KaTeX math & Mermaid SVG HTML pipeline
-│   │   ├── mermaidSvg.ts            # Deterministic SVG flowchart layout engine
 │   │   ├── htmlToMarkdown.ts        # Rich HTML clipboard-to-Markdown converter
 │   │   ├── themes.ts                # Canvas presets, 8 card themes & default schemes
 │   │   ├── templates.ts             # Built-in sample documents
@@ -106,6 +140,7 @@ MarkSnap Studio compiles into a pure static bundle (`dist/`) and can be deployed
 │   └── main.tsx                     # Application entry point
 ├── index.html
 ├── package.json
+├── wrangler.toml                    # Cloudflare Pages config
 └── vite.config.ts
 ```
 
@@ -114,6 +149,8 @@ MarkSnap Studio compiles into a pure static bundle (`dist/`) and can be deployed
 ## 🇨🇳 中文简介 (Chinese Overview)
 
 **MarkSnap Studio** 是一款纯前端、零后端的 **Markdown 转手机长图与多图卡片工具**：
+
+> 🌐 在线体验（Cloudflare Pages 部署）：<https://marksnap-studio.pages.dev>
 
 - **纯净默认预设**：默认无页眉、无页脚、无外边框留白，打开即得干净紧凑的阅读长图；同时保留「爸妈微信大字」「手机清爽卡片」「桌面技术周报」等一键预设。
 - **双模式导出**：支持**一图流高清长图**与**智能分页多图**（按 `---` 分割线、`##` 二级标题或手机屏高字数自动切分，支持 ZIP 批量打包下载）。

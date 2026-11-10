@@ -1,0 +1,8 @@
+# Cloudflare Pages configuration for MarkSnap Studio
+# Live site: https://marksnap-studio.pages.dev
+#
+# Deploy with:
+#   npm run build && npx wrangler pages deploy
+name = "marksnap-studio"
+compatibility_date = "2025-01-01"
+pages_build_output_dir = "./dist"
