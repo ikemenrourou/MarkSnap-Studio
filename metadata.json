@@ -1,0 +1,6 @@
+{
+  "name": "MarkSnap Studio — Markdown 转手机长图与多端卡片工具",
+  "description": "将 AI 生成的 Markdown 文档一键转换为适配手机阅读的高清长图、智能分页卡片与桌面端宽屏美图，支持微信免压缩尺寸优化与 Cloudflare Pages 部署。",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
