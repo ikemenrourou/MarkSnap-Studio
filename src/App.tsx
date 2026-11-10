@@ -36,9 +36,15 @@ import {
   cleanseAiMarkdown,
   extractDocumentStats,
   findSourceOffsetBySnippet,
-  splitMarkdownIntoPages,
-  SplitMode,
+  tokenizeMarkdownBlocks,
 } from './utils/markdownProcessor';
+import {
+  computePageBudget,
+  estimateChromeLogicalHeight,
+  paginateMarkdown,
+  SplitMode,
+} from './utils/pagination';
+import { renderMarkdownToHtml } from './utils/markdownRenderer';
 import { convertHtmlToMarkdown } from './utils/htmlToMarkdown';
 import {
   CANVAS_PRESETS,
@@ -87,7 +93,11 @@ export default function App() {
 
   // Pagination & Split mode
   const [splitMode, setSplitMode] = useState<SplitMode>('single');
-  const [maxCharsPerPage, setMaxCharsPerPage] = useState<number>(520);
+  const [maxCharsPerPage, setMaxCharsPerPage] = useState<number>(8000);
+  const [showCharCapOverride, setShowCharCapOverride] =
+    useState<boolean>(false);
+  const [blockHeights, setBlockHeights] = useState<number[] | null>(null);
+  const measureStageRef = useRef<HTMLDivElement | null>(null);
 
   // AI Cleanse & Paste options
   const [stripBareUrls, setStripBareUrls] = useState<boolean>(false);
@@ -277,11 +287,149 @@ export default function App() {
     [selectedThemeId]
   );
 
-  // Split markdown into pages according to current splitMode
-  const pages = useMemo(
-    () => splitMarkdownIntoPages(markdown, splitMode, maxCharsPerPage),
-    [markdown, splitMode, maxCharsPerPage]
+  // --- Height-accurate pagination ------------------------------------------
+  // Pages exist only to keep each exported image inside the browser canvas /
+  // WeChat sharpness budget, so the splitter needs real rendered heights.
+  const measureBlocks = useMemo(
+    () => tokenizeMarkdownBlocks(markdown.trim()),
+    [markdown]
   );
+
+  const measureContentWidth = Math.max(
+    160,
+    logicalWidth - outerFramePadding * 2 - cardPadding * 2
+  );
+
+  const measureHtml = useMemo(
+    () =>
+      measureBlocks.map((block) =>
+        renderMarkdownToHtml(block, {
+          theme: currentTheme,
+          fontSize,
+          lineHeight,
+          highlightBold,
+          showMacCodeHeader: true,
+          imageVault,
+        })
+      ),
+    [
+      measureBlocks,
+      currentTheme,
+      fontSize,
+      lineHeight,
+      highlightBold,
+      imageVault,
+    ]
+  );
+
+  // Measure every block in an off-screen stage that mirrors the card body, so
+  // tables / code / images / math contribute their true pixel height.
+  useEffect(() => {
+    const stage = measureStageRef.current;
+    if (!stage) return;
+    let frame = 0;
+    let cancelled = false;
+
+    const read = () => {
+      if (cancelled) return;
+      const nodes = Array.from(
+        stage.querySelectorAll<HTMLElement>('[data-ms-block]')
+      );
+      if (nodes.length === 0) {
+        setBlockHeights((prev) => (prev && prev.length === 0 ? prev : []));
+        return;
+      }
+      const tops = nodes.map((el) => el.getBoundingClientRect().top);
+      const stageBottom = stage.getBoundingClientRect().bottom;
+      const next = nodes.map((el, i) => {
+        const bottom = i + 1 < nodes.length ? tops[i + 1] : stageBottom;
+        return Math.max(12, Math.round(bottom - tops[i]));
+      });
+      setBlockHeights((prev) =>
+        prev &&
+        prev.length === next.length &&
+        prev.every((v, i) => Math.abs(v - next[i]) <= 1)
+          ? prev
+          : next
+      );
+    };
+
+    const schedule = () => {
+      if (cancelled) return;
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(read);
+    };
+
+    const firstPass = window.setTimeout(schedule, 120);
+    const latePass = window.setTimeout(schedule, 420);
+    stage.addEventListener('load', schedule, true);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(firstPass);
+      window.clearTimeout(latePass);
+      cancelAnimationFrame(frame);
+      stage.removeEventListener('load', schedule, true);
+    };
+  }, [measureHtml, measureContentWidth, fontFamily, cardPadding]);
+
+  const pageChromeHeight = useMemo(
+    () =>
+      estimateChromeLogicalHeight({
+        cardPadding,
+        outerFramePadding,
+        showMacWindowBar,
+        macWindowBarByTheme: Boolean(currentTheme.macHeader),
+        showHeader,
+        showFooter,
+        footerHasText: Boolean(footerText),
+        footerHasQr: Boolean(qrDataUrl),
+        showPageIndicator: splitMode !== 'single',
+      }),
+    [
+      cardPadding,
+      outerFramePadding,
+      showMacWindowBar,
+      currentTheme,
+      showHeader,
+      showFooter,
+      footerText,
+      qrDataUrl,
+      splitMode,
+    ]
+  );
+
+  const pageBudget = useMemo(
+    () => computePageBudget(logicalWidth, exportScale, pageChromeHeight),
+    [logicalWidth, exportScale, pageChromeHeight]
+  );
+
+  // Split markdown into pages: pack by real height, break only on overflow.
+  const pagination = useMemo(
+    () =>
+      paginateMarkdown({
+        markdown,
+        mode: splitMode,
+        budget: pageBudget,
+        blockHeights,
+        contentWidth: measureContentWidth,
+        fontSize,
+        lineHeight,
+        charCap: maxCharsPerPage,
+      }),
+    [
+      markdown,
+      splitMode,
+      pageBudget,
+      blockHeights,
+      measureContentWidth,
+      fontSize,
+      lineHeight,
+      maxCharsPerPage,
+    ]
+  );
+
+  const pages = pagination.pages;
 
   // Measure height of the first card for accurate physical pixel & WeChat estimation
   useEffect(() => {
@@ -782,8 +930,41 @@ export default function App() {
     showToast(t.toastDownloadedZip(generatedImages.length));
   };
 
+  const fontClass =
+    fontFamily === 'serif'
+      ? 'font-serif-cn'
+      : fontFamily === 'mono'
+        ? 'font-mono-code'
+        : 'font-sans-cn';
+
   return (
     <div className="h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 overflow-hidden">
+      {/* Off-screen measurement stage: mirrors the card body 1:1 so pagination
+          uses real rendered pixel heights instead of character counts. */}
+      <div
+        ref={measureStageRef}
+        aria-hidden="true"
+        className={`${fontClass} pointer-events-none`}
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: '-100000px',
+          width: `${measureContentWidth}px`,
+          visibility: 'hidden',
+          zIndex: -1,
+          background: currentTheme.cardBg,
+          color: currentTheme.textColor,
+        }}
+      >
+        {measureHtml.map((html, index) => (
+          <div
+            key={index}
+            data-ms-block={index}
+            dangerouslySetInnerHTML={{ __html: html }}
+          />
+        ))}
+      </div>
+
       {/* Single Clean Top Header Bar */}
       <header className="h-14 shrink-0 flex items-center justify-between gap-4 px-5 bg-white dark:bg-slate-900 border-b border-slate-200/80 dark:border-slate-800 z-20">
         {/* Left: Brand & Quick Preset Pills */}
@@ -1290,7 +1471,9 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() =>
-                      setSplitMode((prev) => (prev === 'single' ? 'hr' : prev))
+                      setSplitMode((prev) =>
+                        prev === 'single' ? 'auto-length' : prev
+                      )
                     }
                     className={`py-1.5 text-xs font-medium rounded-md transition-colors cursor-pointer ${
                       splitMode !== 'single'
@@ -1312,28 +1495,48 @@ export default function App() {
                       }
                       className="w-full text-xs bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-slate-800 dark:text-slate-200 font-medium"
                     >
-                      <option value="hr">{t.splitByHr}</option>
-                      <option value="h2">{t.splitByH2}</option>
                       <option value="auto-length">{t.splitByLength}</option>
+                      <option value="h2">{t.splitByH2}</option>
+                      <option value="hr">{t.splitByHr}</option>
                     </select>
 
-                    {splitMode === 'auto-length' && (
+                    <p className="text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
+                      {t.pageBudgetHint(
+                        Math.round(pagination.budgetLogicalHeight),
+                        pageBudget.scale
+                      )}
+                    </p>
+
+                    <button
+                      type="button"
+                      onClick={() => setShowCharCapOverride((v) => !v)}
+                      className="flex w-full items-center justify-between text-[11px] font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors cursor-pointer"
+                    >
+                      <span>{t.charCapAdvanced}</span>
+                      <ChevronDown
+                        className={`w-3 h-3 transition-transform ${
+                          showCharCapOverride ? 'rotate-180' : ''
+                        }`}
+                      />
+                    </button>
+
+                    {showCharCapOverride && (
                       <div className="flex items-center gap-2 text-xs">
                         <span className="text-slate-500 shrink-0">
                           {t.charsPerPage}
                         </span>
                         <input
                           type="range"
-                          min={240}
-                          max={1000}
-                          step={40}
+                          min={1000}
+                          max={20000}
+                          step={500}
                           value={maxCharsPerPage}
                           onChange={(e) =>
                             setMaxCharsPerPage(Number(e.target.value))
                           }
                           className="flex-1 accent-slate-900 dark:accent-emerald-500"
                         />
-                        <span className="font-mono-code w-10 text-right tabular-nums">
+                        <span className="font-mono-code w-12 text-right tabular-nums">
                           {maxCharsPerPage}
                         </span>
                       </div>

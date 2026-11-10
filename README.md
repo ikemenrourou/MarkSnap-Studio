@@ -25,7 +25,7 @@ MarkSnap Studio is a 100% client-side web tool designed to turn raw Markdown or 
   - Switch between `Mobile 380px`, `Plus 440px`, `Wide 540px`, `Desktop 820px`, `Ultra 1040px`, or any custom width (`320px–1200px`).
 - **Dual Output Modes: Single Long Image vs. Smart Multi-Card Pagination**
   - **Single Long Image**: Export the entire document as one continuous vertical image with automatic canvas height protection.
-  - **Multi-Card Pagination**: Automatically split long documents into swipeable cards by horizontal dividers (`---`), `##` headings, or character count, with **1-click ZIP batch download**.
+  - **Multi-Card Pagination**: Height-driven splitting — pages are packed until the exported image would exceed the safe canvas/WeChat sharpness budget (`≈16MP`, `≤15,800px` tall), so a 6,000-character answer becomes **2 crisp cards instead of 16 fragments**. `---` dividers and `##` headings are available as optional hard boundaries, with **1-click ZIP batch download**.
 - **Rich Markdown, Math & Diagram Rendering**
   - **GitHub Flavored Markdown (GFM)**: Tables, task lists, blockquotes, and syntax-highlighted code blocks.
   - **LaTeX Math**: Inline (`$...$`) and block (`$$...$$`) equations powered by KaTeX.
@@ -130,7 +130,8 @@ The repo ships a `wrangler.toml` with `pages_build_output_dir = "./dist"`, so `n
 │   │   ├── MarkdownCardCanvas.tsx   # Live high-DPI card renderer
 │   │   └── ExportPreviewModal.tsx   # Image preview, clipboard copy & ZIP download modal
 │   ├── utils/
-│   │   ├── markdownProcessor.ts     # AI cleanse, pagination splitter & export metrics
+│   │   ├── markdownProcessor.ts     # AI cleanse, block tokenizer & export metrics
+│   │   ├── pagination.ts            # Height-driven page packing & canvas budget
 │   │   ├── markdownRenderer.ts      # GFM, KaTeX math & Mermaid SVG HTML pipeline
 │   │   ├── htmlToMarkdown.ts        # Rich HTML clipboard-to-Markdown converter
 │   │   ├── themes.ts                # Canvas presets, 8 card themes & default schemes
@@ -153,7 +154,7 @@ The repo ships a `wrangler.toml` with `pages_build_output_dir = "./dist"`, so `n
 > 🌐 在线体验（Cloudflare Pages 部署）：<https://marksnap-studio.pages.dev>
 
 - **纯净默认预设**：默认无页眉、无页脚、无外边框留白，打开即得干净紧凑的阅读长图；同时保留「爸妈微信大字」「手机清爽卡片」「桌面技术周报」等一键预设。
-- **双模式导出**：支持**一图流高清长图**与**智能分页多图**（按 `---` 分割线、`##` 二级标题或手机屏高字数自动切分，支持 ZIP 批量打包下载）。
+- **双模式导出**：支持**一图流高清长图**与**智能分页多图**（按真实渲染高度装箱，只在单张图超出清晰度/Canvas 安全上限时才切页，支持 ZIP 批量打包下载）。
 - **富文本与贴图支持**：支持粘贴网页富文本自动转为 Markdown、编辑器内直接 `Ctrl+V` 粘贴截图、一键 AI 净化寒暄语、点击画布段落反向定位源码。
 - **完整语法支持**：原生支持 GFM 表格、代码高亮、KaTeX 数学公式（`$...$` / `$$...$$`）与 Mermaid 矢量流程图。
 - **中英双语切换**：顶栏支持一键切换 `中文 / EN` 界面与亮暗主题。

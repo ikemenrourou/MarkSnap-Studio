@@ -5,8 +5,6 @@ export interface CleanseOptions {
   convertWideTablesToCards?: boolean;
 }
 
-export type SplitMode = 'single' | 'hr' | 'h2' | 'auto-length';
-
 export interface CanvasExportMetrics {
   logicalWidth: number;
   estimatedHeight: number;
@@ -183,105 +181,6 @@ export function convertMarkdownTablesToList(segment: string, minCols = 3): strin
   }
 
   return out.join('\n');
-}
-
-/**
- * Splits Markdown into 1 or more pages safely without breaking fenced code blocks or tables.
- */
-export function splitMarkdownIntoPages(
-  markdown: string,
-  splitMode: SplitMode,
-  maxCharsPerPage = 520
-): string[] {
-  const trimmed = markdown.trim();
-  if (!trimmed) return [''];
-  if (splitMode === 'single') return [trimmed];
-
-  // Tokenize into top-level blocks (preserving fenced code blocks and tables together)
-  const blocks = tokenizeMarkdownBlocks(trimmed);
-
-  if (splitMode === 'hr') {
-    const pages: string[] = [];
-    let current: string[] = [];
-    for (const block of blocks) {
-      if (/^(---|\*\*\*|___)\s*$/.test(block.trim())) {
-        if (current.length > 0) {
-          pages.push(current.join('\n\n').trim());
-          current = [];
-        }
-      } else {
-        current.push(block);
-      }
-    }
-    if (current.length > 0) {
-      pages.push(current.join('\n\n').trim());
-    }
-    return pages.length > 0 ? pages : [trimmed];
-  }
-
-  if (splitMode === 'h2') {
-    const pages: string[] = [];
-    let current: string[] = [];
-    for (const block of blocks) {
-      const isH2 = /^##\s+/.test(block.trim());
-      if (isH2 && current.length > 0) {
-        const joined = current.join('\n\n').trim();
-        // Keep short title-only intro together with the first H2 section
-        const isOnlyShortH1 =
-          pages.length === 0 &&
-          current.length <= 2 &&
-          joined.length < 120 &&
-          /^#\s+/.test(joined);
-        if (!isOnlyShortH1) {
-          pages.push(joined);
-          current = [block];
-          continue;
-        }
-      }
-      current.push(block);
-    }
-    if (current.length > 0) {
-      pages.push(current.join('\n\n').trim());
-    }
-    return pages.length > 0 ? pages : [trimmed];
-  }
-
-  // 'auto-length' mode: pack blocks up to maxCharsPerPage
-  const pages: string[] = [];
-  let current: string[] = [];
-  let currentLen = 0;
-
-  for (const block of blocks) {
-    if (/^(---|\*\*\*|___)\s*$/.test(block.trim())) {
-      if (current.length > 0) {
-        pages.push(current.join('\n\n').trim());
-        current = [];
-        currentLen = 0;
-      }
-      continue;
-    }
-
-    const blockLen = block.length;
-    const isMajorHeading = /^#{1,2}\s+/.test(block.trim());
-
-    if (
-      current.length > 0 &&
-      (currentLen + blockLen > maxCharsPerPage || (isMajorHeading && currentLen > maxCharsPerPage * 0.45))
-    ) {
-      pages.push(current.join('\n\n').trim());
-      current = [block];
-      currentLen = blockLen;
-    } else {
-      current.push(block);
-      currentLen += blockLen;
-    }
-  }
-
-  if (current.length > 0) {
-    pages.push(current.join('\n\n').trim());
-  }
-
-  return pages.length > 0 ? pages : [trimmed];
 }
 
 /**

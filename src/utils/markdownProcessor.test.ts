@@ -2,7 +2,6 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   cleanseAiMarkdown,
-  splitMarkdownIntoPages,
   calculateCanvasExportMetrics,
   extractDocumentStats,
   findSourceOffsetBySnippet,
@@ -33,35 +32,6 @@ test('cleanseAiMarkdown converts wide tables into structured list items when ena
   assert.ok(converted.includes('- **血压测量**'));
   assert.ok(converted.includes('**频次**：每周2次'));
   assert.ok(converted.includes('**适用人群**：50岁以上'));
-});
-
-test('splitMarkdownIntoPages respects single mode, hr mode, and h2 mode without breaking code blocks', () => {
-  const md = [
-    '# 主标题',
-    '',
-    '## 第一部分',
-    '段落一',
-    '```js',
-    'const a = "---";',
-    '## 假标题',
-    '```',
-    '---',
-    '## 第二部分',
-    '段落二',
-  ].join('\n');
-
-  const single = splitMarkdownIntoPages(md, 'single');
-  assert.equal(single.length, 1);
-
-  const byHr = splitMarkdownIntoPages(md, 'hr');
-  assert.equal(byHr.length, 2);
-  assert.ok(byHr[0].includes('const a = "---";'));
-  assert.ok(byHr[1].includes('## 第二部分'));
-
-  const byH2 = splitMarkdownIntoPages(md, 'h2');
-  assert.equal(byH2.length, 2);
-  assert.ok(byH2[0].includes('## 第一部分'));
-  assert.ok(byH2[1].includes('## 第二部分'));
 });
 
 test('calculateCanvasExportMetrics enforces safe canvas height ceiling and computes physical size', () => {

@@ -42,6 +42,8 @@ export interface I18nStrings {
   splitByH2: string;
   splitByLength: string;
   charsPerPage: string;
+  pageBudgetHint: (px: number, scale: number) => string;
+  charCapAdvanced: string;
   themePalette: string;
   saveAsPreset: string;
   cancelSave: string;
@@ -170,10 +172,13 @@ export const I18N: Record<Locale, I18nStrings> = {
     canvasSize: '画布尺寸',
     singleLongImage: '一图流长图',
     smartPagination: (pages) => `智能分页 (${pages}页)`,
-    splitByHr: '按分割线 (---) 切分卡片',
-    splitByH2: '按二级标题 (##) 切分卡片',
-    splitByLength: '按手机屏高字数自动切分',
-    charsPerPage: '单页字数',
+    splitByHr: '按分割线 (---) 分段',
+    splitByH2: '按二级标题 (##) 分段',
+    splitByLength: '智能分段（按渲染高度，推荐）',
+    charsPerPage: '字数硬上限',
+    pageBudgetHint: (px, scale) =>
+      `每页最高约 ${px}px 逻辑高 @${scale}x，只在超出清晰度上限时才切页`,
+    charCapAdvanced: '高级：字数硬上限',
     themePalette: '主题配色',
     saveAsPreset: '存为预设',
     cancelSave: '取消',
@@ -316,8 +321,11 @@ export const I18N: Record<Locale, I18nStrings> = {
     smartPagination: (pages) => `Multi-Card (${pages}p)`,
     splitByHr: 'Split by Divider (---)',
     splitByH2: 'Split by Heading (##)',
-    splitByLength: 'Auto-Split by Length',
-    charsPerPage: 'Chars/Page',
+    splitByLength: 'Smart (by rendered height)',
+    charsPerPage: 'Char hard cap',
+    pageBudgetHint: (px, scale) =>
+      `≈${px}px logical per page @${scale}x — splits only when sharpness would drop`,
+    charCapAdvanced: 'Advanced: character hard cap',
     themePalette: 'Themes',
     saveAsPreset: '+ Save Preset',
     cancelSave: 'Cancel',
